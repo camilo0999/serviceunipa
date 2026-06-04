@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  estudiante
+  operador_comedor
+  operador_bus
+  administrador
+}
+
+enum TurnoUsuario {
+  dia
+  noche
+  mixto
+}
+
+enum PlataformaDispositivo {
+  android
+  ios
+}
+
+model Usuario {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigoEstudiantil String    @unique @map("codigo_estudiantil") @db.VarChar(20)
+  nombre            String    @db.VarChar(100)
+  apellido          String    @db.VarChar(100)
+  email             String    @unique @db.VarChar(255)
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  rol               RolUsuario @default(estudiante)
+  turno             TurnoUsuario @default(dia)
+  activo            Boolean   @default(true)
+  fotoUrl           String?   @map("foto_url") @db.Text
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn     DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  sesiones             Sesion[]
+  tokensBlacklist      TokenBlacklist[]
+  dispositivos         Dispositivo[]
+  recuperacionesPass   RecuperacionPassword[]
+  auditorias           Auditoria[]
+
+  @@index([email])
+  @@index([codigoEstudiantil])
+  @@index([rol, turno])
+  @@index([activo])
+  
+  @@map("usuarios")
+}
+
+model Sesion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId    String   @map("usuario_id") @db.Uuid
+  refreshToken String   @unique @map("refresh_token") @db.VarChar(512)
+  ipAddress    String?  @map("ip_address") @db.Inet
+  userAgent    String?  @map("user_agent") @db.Text
+  revocada     Boolean  @default(false)
+  expiraEn     DateTime @map("expira_en") @db.Timestamptz
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([refreshToken])
+  @@index([usuarioId, revocada])
+  @@index([expiraEn])
+
+  @@map("sesiones")
+}
+
+model TokenBlacklist {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenJti  String   @unique @map("token_jti") @db.VarChar(36)
+  usuarioId String   @map("usuario_id") @db.Uuid
+  expiraEn  DateTime @map("expira_en") @db.Timestamptz
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tokenJti])
+  @@index([expiraEn])
+
+  @@map("token_blacklist")
+}
+
+model Dispositivo {
+  id         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId  String                @map("usuario_id") @db.Uuid
+  fcmToken   String                @unique @map("fcm_token") @db.Text
+  plataforma PlataformaDispositivo
+  modelo     String?               @db.VarChar(100)
+  activo     Boolean               @default(true)
+  ultimoUso  DateTime              @default(now()) @map("ultimo_uso") @db.Timestamptz
+  creadoEn   DateTime              @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario    Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([usuarioId, activo])
+
+  @@map("dispositivos")
+}
+
+model RecuperacionPassword {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  usado     Boolean  @default(false)
+  expiraEn  DateTime @map("expira_en") @db.Timestamptz
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([tokenHash])
+  @@index([expiraEn])
+
+  @@map("recuperacion_password")
+}
+
+model Auditoria {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId       String?  @map("usuario_id") @db.Uuid
+  accion          String   @db.VarChar(100)
+  tablaAfectada   String   @map("tabla_afectada") @db.VarChar(100)
+  registroId      String?  @map("registro_id") @db.Uuid
+  datosAnteriores Json?    @map("datos_anteriores")
+  datosNuevos     Json?    @map("datos_nuevos")
+  ipAddress       String?  @map("ip_address") @db.Inet
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario         Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([tablaAfectada])
+  @@index([creadoEn(sort: Desc)])
+  @@index([registroId])
+  
+  @@map("auditoria")
+}
