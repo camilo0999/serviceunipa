@@ -12,16 +12,22 @@ import { RedisModule } from './modules/redis/redis.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
+import { MenusDiaModule } from './modules/menus-dia/menus-dia.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
-        transport: process.env.NODE_ENV !== 'production'
-          ? { target: 'pino-pretty', options: { singleLine: true } }
-          : undefined, // En producción imprime el JSON estructurado puro
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? { target: 'pino-pretty', options: { singleLine: true } }
+            : undefined, // En producción imprime el JSON estructurado puro
         autoLogging: false, // Desactivar logs automáticos de peticiones HTTP para mantener limpio el log (opcional)
         formatters: {
           level: (label) => {
@@ -45,6 +51,9 @@ import { LoggerModule } from 'nestjs-pino';
     RecuperacionPasswordModule,
     TokenBlacklistModule,
     RedisModule,
+    MenusDiaModule,
+    TicketsModule,
+    NotificacionesModule,
   ],
   providers: [
     {

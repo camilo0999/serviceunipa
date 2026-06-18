@@ -25,31 +25,38 @@ enum PlataformaDispositivo {
   ios
 }
 
-model Usuario {
-  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigoEstudiantil String    @unique @map("codigo_estudiantil") @db.VarChar(20)
-  nombre            String    @db.VarChar(100)
-  apellido          String    @db.VarChar(100)
-  email             String    @unique @db.VarChar(255)
-  passwordHash      String    @map("password_hash") @db.VarChar(255)
-  rol               RolUsuario @default(estudiante)
-  turno             TurnoUsuario @default(dia)
-  activo            Boolean   @default(true)
-  fotoUrl           String?   @map("foto_url") @db.Text
-  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz
-  actualizadoEn     DateTime  @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+enum TipoComida {
+  desayuno
+  almuerzo
+  cena
+}
 
-  sesiones             Sesion[]
-  tokensBlacklist      TokenBlacklist[]
-  dispositivos         Dispositivo[]
-  recuperacionesPass   RecuperacionPassword[]
-  auditorias           Auditoria[]
+model Usuario {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigoEstudiantil String       @unique @map("codigo_estudiantil") @db.VarChar(20)
+  nombre            String       @db.VarChar(100)
+  apellido          String       @db.VarChar(100)
+  email             String       @unique @db.VarChar(255)
+  passwordHash      String       @map("password_hash") @db.VarChar(255)
+  rol               RolUsuario   @default(estudiante)
+  turno             TurnoUsuario @default(dia)
+  activo            Boolean      @default(true)
+  fotoUrl           String?      @map("foto_url") @db.Text
+  creadoEn          DateTime     @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn     DateTime     @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  sesiones              Sesion[]
+  tokensBlacklist       TokenBlacklist[]
+  dispositivos          Dispositivo[]
+  recuperacionesPass    RecuperacionPassword[]
+  auditorias            Auditoria[]
+  inscripcionesMaterias InscripcionMateria[]
+  tickets               Ticket[]
 
   @@index([email])
   @@index([codigoEstudiantil])
   @@index([rol, turno])
   @@index([activo])
-  
   @@map("usuarios")
 }
 
@@ -63,13 +70,12 @@ model Sesion {
   expiraEn     DateTime @map("expira_en") @db.Timestamptz
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
   @@index([refreshToken])
   @@index([usuarioId, revocada])
   @@index([expiraEn])
-
   @@map("sesiones")
 }
 
@@ -80,11 +86,10 @@ model TokenBlacklist {
   expiraEn  DateTime @map("expira_en") @db.Timestamptz
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([tokenJti])
   @@index([expiraEn])
-
   @@map("token_blacklist")
 }
 
@@ -98,11 +103,10 @@ model Dispositivo {
   ultimoUso  DateTime              @default(now()) @map("ultimo_uso") @db.Timestamptz
   creadoEn   DateTime              @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuario    Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
   @@index([usuarioId, activo])
-
   @@map("dispositivos")
 }
 
@@ -114,12 +118,11 @@ model RecuperacionPassword {
   expiraEn  DateTime @map("expira_en") @db.Timestamptz
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
   @@index([tokenHash])
   @@index([expiraEn])
-
   @@map("recuperacion_password")
 }
 
@@ -134,12 +137,76 @@ model Auditoria {
   ipAddress       String?  @map("ip_address") @db.Inet
   creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
-  usuario         Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
   @@index([usuarioId])
   @@index([tablaAfectada])
   @@index([creadoEn(sort: Desc)])
   @@index([registroId])
-  
   @@map("auditoria")
+}
+
+model MenuDia {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fecha         DateTime   @db.Date
+  tipoComida    TipoComida @map("tipo_comida")
+  horaInicio    DateTime   @map("hora_inicio") @db.Time
+  horaFin       DateTime   @map("hora_fin") @db.Time
+  descripcion   String     @db.Text
+  activo        Boolean    @default(true)
+  creadoEn      DateTime   @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime   @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  tickets Ticket[]
+
+  @@unique([fecha, tipoComida])
+  @@index([fecha])
+  @@map("menus_dia")
+}
+
+model Materia {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo     String   @unique @db.VarChar(50)
+  nombre     String   @db.VarChar(150)
+  horaInicio DateTime @map("hora_inicio") @db.Time
+  horaFin    DateTime @map("hora_fin") @db.Time
+  diasSemana Int[]    @map("dias_semana") // 0: Domingo, 1: Lunes, 2: Martes, etc.
+
+  inscripciones InscripcionMateria[]
+
+  @@map("materias")
+}
+
+model InscripcionMateria {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String @map("usuario_id") @db.Uuid
+  materiaId String @map("materia_id") @db.Uuid
+  semestre  String @db.VarChar(20)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  materia Materia @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, materiaId, semestre])
+  @@index([usuarioId])
+  @@map("inscripciones_materias")
+}
+
+model Ticket {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String    @map("usuario_id") @db.Uuid
+  menuDiaId String    @map("menu_dia_id") @db.Uuid
+  qrHash    String    @unique @map("qr_hash") @db.VarChar(512)
+  usado     Boolean   @default(false)
+  usadoEn   DateTime? @map("usado_en") @db.Timestamptz
+  expiraEn  DateTime  @map("expira_en") @db.Timestamptz
+  creadoEn  DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  menuDia MenuDia @relation(fields: [menuDiaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, menuDiaId])
+  @@index([usuarioId])
+  @@index([qrHash])
+  @@index([usado])
+  @@map("tickets")
 }
