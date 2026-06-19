@@ -52,6 +52,8 @@ model Usuario {
   auditorias            Auditoria[]
   inscripcionesMaterias InscripcionMateria[]
   tickets               Ticket[]
+  busTickets            BusTicket[]
+  viajeRegistros        ViajeRegistro[]
 
   @@index([email])
   @@index([codigoEstudiantil])
@@ -209,4 +211,83 @@ model Ticket {
   @@index([qrHash])
   @@index([usado])
   @@map("tickets")
+}
+
+model Ruta {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre        String   @db.VarChar(150)
+  origen        String   @db.VarChar(150)
+  destino       String   @db.VarChar(150)
+  capacidadTotal Int
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  horarios Horario[]
+  viajes   Viaje[]
+
+  @@map("rutas")
+}
+
+model Horario {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rutaId     String   @map("ruta_id") @db.Uuid
+  horaPartida DateTime @map("hora_partida") @db.Time
+  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  ruta Ruta @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  viajes Viaje[]
+
+  @@index([rutaId])
+  @@map("horarios")
+}
+
+model Viaje {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rutaId       String    @map("ruta_id") @db.Uuid
+  horarioId    String?   @map("horario_id") @db.Uuid
+  capacidadTotal Int
+  ocupados     Int       @default(0)
+  fecha        DateTime? @db.Date
+  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  ruta    Ruta    @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  horario Horario? @relation(fields: [horarioId], references: [id], onDelete: SetNull)
+  tickets BusTicket[]
+  registros ViajeRegistro[]
+
+  @@index([rutaId])
+  @@map("viajes")
+}
+
+model BusTicket {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String    @map("usuario_id") @db.Uuid
+  viajeId   String    @map("viaje_id") @db.Uuid
+  qrHash    String    @unique @map("qr_hash") @db.VarChar(512)
+  usado     Boolean   @default(false)
+  usadoEn   DateTime? @map("usado_en") @db.Timestamptz
+  expiraEn  DateTime  @map("expira_en") @db.Timestamptz
+  creadoEn  DateTime  @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  viaje   Viaje    @relation(fields: [viajeId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([viajeId])
+  @@map("bus_tickets")
+}
+
+model ViajeRegistro {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  viajeId   String   @map("viaje_id") @db.Uuid
+  accion    String   @db.VarChar(50)
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  viaje   Viaje    @relation(fields: [viajeId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([viajeId])
+  @@map("viaje_registros")
 }

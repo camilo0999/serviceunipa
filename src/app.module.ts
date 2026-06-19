@@ -15,6 +15,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { MenusDiaModule } from './modules/menus-dia/menus-dia.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
+import { BusModule } from './modules/bus/bus.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -53,6 +54,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     RedisModule,
     MenusDiaModule,
     TicketsModule,
+    BusModule,
     NotificacionesModule,
   ],
   providers: [
