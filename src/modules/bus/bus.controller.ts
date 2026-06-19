@@ -20,12 +20,16 @@ export class BusController {
     return this.busService.createRuta(dto as any);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('rutas')
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
   listRutas() {
     return this.busService.listRutas();
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('rutas/:id')
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
   getRuta(@Param('id') id: string) {
     return this.busService.getRuta(id);
   }
@@ -46,12 +50,14 @@ export class BusController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('tickets/board')
-  @Roles(RolUsuario.operador_bus, RolUsuario.administrador)
+  @Roles(RolUsuario.operador_bus, RolUsuario.administrador, RolUsuario.estudiante)
   board(@Body() dto: ValidateBusTicketDto) {
     return this.busService.board(dto.qrHash);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('viajes/:id/availability')
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
   availability(@Param('id') id: string) {
     return this.busService.getAvailability(id);
   }
