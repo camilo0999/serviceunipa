@@ -17,6 +17,9 @@ import { TicketsModule } from './modules/tickets/tickets.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 import { BusModule } from './modules/bus/bus.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ImportModule } from './modules/import/import.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -56,6 +59,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     TicketsModule,
     BusModule,
     NotificacionesModule,
+    // Módulo para importaciones masivas (CSV)
+    ImportModule,
+    MetricsModule,
+    ReportsModule,
   ],
   providers: [
     {
