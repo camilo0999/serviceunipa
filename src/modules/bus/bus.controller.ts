@@ -22,14 +22,14 @@ export class BusController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('rutas')
-  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
   listRutas() {
     return this.busService.listRutas();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('rutas/:id')
-  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
   getRuta(@Param('id') id: string) {
     return this.busService.getRuta(id);
   }
