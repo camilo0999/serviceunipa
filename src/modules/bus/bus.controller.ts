@@ -15,7 +15,7 @@ export class BusController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rutas')
-  @Roles(RolUsuario.administrador)
+  @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
   createRuta(@Body() dto: CreateRutaDto) {
     return this.busService.createRuta(dto as any);
   }
@@ -36,7 +36,7 @@ export class BusController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rutas/:id/horarios')
-  @Roles(RolUsuario.administrador)
+  @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
   addHorario(@Param('id') id: string, @Body() dto: CreateHorarioDto) {
     return this.busService.addHorario(id, dto.horaPartida);
   }
@@ -57,7 +57,7 @@ export class BusController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('viajes/:id/availability')
-  @Roles(RolUsuario.estudiante, RolUsuario.administrador)
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
   availability(@Param('id') id: string) {
     return this.busService.getAvailability(id);
   }
