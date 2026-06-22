@@ -15,8 +15,17 @@ export class BusService {
   ) {}
 
   // Rutas CRUD
-  async createRuta(data: { nombre: string; origen: string; destino: string; capacidadTotal: number }) {
-    return this.prisma.ruta.create({ data });
+  async createRuta(data: { nombre: string; origen: string; destino: string; capacidadTotal: number; fotoUrl?: string; horaSalida?: string }) {
+    return this.prisma.ruta.create({
+      data: {
+        nombre: data.nombre,
+        origen: data.origen,
+        destino: data.destino,
+        ...(data.fotoUrl && { fotoUrl: data.fotoUrl }),
+        ...(data.horaSalida && { horaSalida: new Date(data.horaSalida) }),
+        capacidadTotal: data.capacidadTotal,
+      },
+    });
   }
 
   async listRutas() {

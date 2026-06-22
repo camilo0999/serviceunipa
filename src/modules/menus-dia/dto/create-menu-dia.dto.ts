@@ -5,6 +5,7 @@ import {
   IsString,
   IsBoolean,
   IsOptional,
+  IsUrl,
 } from 'class-validator';
 import { TipoComida } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
@@ -41,6 +42,14 @@ export class CreateMenuDiaDto {
   @IsString()
   @IsNotEmpty()
   descripcion: string;
+
+  @ApiProperty({
+    description: 'URL de la foto del plato',
+    required: false,
+  })
+  @IsUrl()
+  @IsOptional()
+  url?: string;
 
   @ApiProperty({
     description: 'Indica si el menú está activo',

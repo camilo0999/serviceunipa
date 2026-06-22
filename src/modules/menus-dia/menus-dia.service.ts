@@ -34,6 +34,7 @@ export class MenusDiaService {
         horaInicio: new Date(createMenuDiaDto.horaInicio),
         horaFin: new Date(createMenuDiaDto.horaFin),
         descripcion: createMenuDiaDto.descripcion,
+        ...(createMenuDiaDto.url && { url: createMenuDiaDto.url }),
         activo: createMenuDiaDto.activo ?? true,
       },
     });
@@ -93,6 +94,9 @@ export class MenusDiaService {
         }),
         ...(updateMenuDiaDto.descripcion && {
           descripcion: updateMenuDiaDto.descripcion,
+        }),
+        ...(updateMenuDiaDto.url !== undefined && {
+          url: updateMenuDiaDto.url,
         }),
         ...(updateMenuDiaDto.activo !== undefined && {
           activo: updateMenuDiaDto.activo,

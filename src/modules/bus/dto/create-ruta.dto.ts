@@ -1,4 +1,4 @@
-import { IsString, IsInt, Min } from 'class-validator';
+import { IsString, IsInt, Min, IsOptional, IsUrl, IsDateString } from 'class-validator';
 
 export class CreateRutaDto {
   @IsString()
@@ -9,6 +9,14 @@ export class CreateRutaDto {
 
   @IsString()
   destino: string;
+
+  @IsOptional()
+  @IsUrl()
+  fotoUrl?: string;
+
+  @IsOptional()
+  @IsDateString()
+  horaSalida?: string;
 
   @IsInt()
   @Min(1)

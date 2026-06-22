@@ -155,6 +155,7 @@ model MenuDia {
   horaInicio    DateTime   @map("hora_inicio") @db.Time
   horaFin       DateTime   @map("hora_fin") @db.Time
   descripcion   String     @db.Text
+  url           String?    @db.Text
   activo        Boolean    @default(true)
   creadoEn      DateTime   @default(now()) @map("creado_en") @db.Timestamptz
   actualizadoEn DateTime   @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz
@@ -218,6 +219,8 @@ model Ruta {
   nombre        String   @db.VarChar(150)
   origen        String   @db.VarChar(150)
   destino       String   @db.VarChar(150)
+  fotoUrl       String?  @map("foto_url") @db.Text
+  horaSalida    DateTime? @map("hora_salida") @db.Time
   capacidadTotal Int
   activo        Boolean  @default(true)
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz
