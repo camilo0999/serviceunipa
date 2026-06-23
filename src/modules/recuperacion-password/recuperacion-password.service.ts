@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
+import { EmailService } from '../email/email.service';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 
@@ -13,6 +14,7 @@ export class RecuperacionPasswordService {
   constructor(
     private prisma: PrismaService,
     private usuariosService: UsuariosService,
+    private emailService: EmailService,
   ) {}
 
   async requestReset(email: string) {
@@ -33,8 +35,22 @@ export class RecuperacionPasswordService {
       },
     });
 
-    // In a real app, send the email here
-    return { message: 'Reset email sent', token }; // Returning token for testing purposes
+    // Enviar email con el token
+    try {
+      await this.emailService.sendPasswordResetEmail(
+        user.email,
+        token,
+        user.nombre,
+      );
+    } catch (error) {
+      console.error('Error sending reset email:', error);
+      // No lanzar excepción aquí, el token ya fue creado
+    }
+
+    return {
+      message: 'Email de recuperación enviado exitosamente',
+      success: true,
+    };
   }
 
   async resetPassword(token: string, newPassword: string) {
