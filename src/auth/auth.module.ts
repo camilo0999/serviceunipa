@@ -16,7 +16,6 @@ import { LocalStrategy } from './strategies/local.strategy';
         secret: process.env.JWT_SECRET || 'secret',
         signOptions: {
           expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
-          jwtid: require('crypto').randomUUID(),
         },
       }),
     }),

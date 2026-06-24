@@ -3,7 +3,7 @@ import { UsuariosService } from '../modules/usuarios/usuarios.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash, randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +26,7 @@ export class AuthService {
     const payload = { email: user.email, sub: user.id, rol: user.rol };
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
+      jwtid: randomUUID(),
     });
     const refreshToken = randomBytes(64).toString('hex');
 
@@ -70,6 +71,7 @@ export class AuthService {
     const payload = { email: user.email, sub: user.id, rol: user.rol };
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
+      jwtid: randomUUID(),
     });
 
     return {
