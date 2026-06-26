@@ -50,6 +50,13 @@ export class UsuariosController {
     return this.usuariosService.getBeneficios(usuarioId);
   }
 
+  @Get('horario')
+  @Roles(RolUsuario.estudiante)
+  getHorario(@Request() req: { user: { sub: string } }) {
+    const usuarioId = req.user.sub;
+    return this.usuariosService.getHorario(usuarioId);
+  }
+
   /**
    * Obtener un usuario por ID
    * Recupera los detalles de un usuario específico.

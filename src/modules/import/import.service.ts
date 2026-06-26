@@ -102,7 +102,7 @@ export class ImportService {
         results.inserted++;
       } catch (err) {
         results.skipped++;
-        results.errors.push({ record: r, reason: err.message });
+        results.errors.push({ record: r});
       }
     }
     return results;

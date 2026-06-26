@@ -117,6 +117,51 @@ export class UsuariosService {
     };
   }
 
+  async getHorario(usuarioId: string) {
+    const inscripciones = await this.prisma.inscripcionMateria.findMany({
+      where: { usuarioId },
+      select: {
+        id: true,
+        usuarioId: true,
+        semestre: true,
+        materia: {
+          select: {
+            id: true,
+            codigo: true,
+            nombre: true,
+            horaInicio: true,
+            horaFin: true,
+            diasSemana: true,
+          },
+        },
+      },
+      orderBy: [{ semestre: 'asc' }, { materia: { nombre: 'asc' } }],
+    });
+
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+    return inscripciones.map((inscripcion) => ({
+      usuarioId: inscripcion.usuarioId,
+      inscripcionId: inscripcion.id,
+      semestre: inscripcion.semestre,
+      materiaId: inscripcion.materia.id,
+      codigo: inscripcion.materia.codigo,
+      nombre: inscripcion.materia.nombre,
+      horaInicio: this.formatTime(inscripcion.materia.horaInicio),
+      horaFin: this.formatTime(inscripcion.materia.horaFin),
+      diasSemana: inscripcion.materia.diasSemana,
+      dias: inscripcion.materia.diasSemana.map((d) => dayNames[d] ?? String(d)),
+    }));
+  }
+
+  private formatTime(time: Date) {
+    if (!time) return null;
+    const hours = String(time.getUTCHours()).padStart(2, '0');
+    const minutes = String(time.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(time.getUTCSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
   private async getBusesHoy(hoy: Date, ahora: Date) {
     const viajes = await this.prisma.viaje.findMany({
       where: {
