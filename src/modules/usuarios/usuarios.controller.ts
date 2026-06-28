@@ -60,8 +60,10 @@ export class UsuariosController {
   /**
    * Obtener un usuario por ID
    * Recupera los detalles de un usuario específico.
+   * Funciona para usuarios con rol de estudiante, ya que solo ellos pueden acceder a su propia información.
    */
   @Get(':id')
+  @Roles(RolUsuario.estudiante)
   findOne(@Param('id') id: string) {
     return this.usuariosService.findOne(id);
   }
