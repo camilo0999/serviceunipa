@@ -19,5 +19,6 @@ import { NotificacionesModule } from 'src/modules/notificaciones/notificaciones.
   ],
   controllers: [TicketsController],
   providers: [TicketsService],
+  exports: [TicketsService],
 })
 export class TicketsModule {}

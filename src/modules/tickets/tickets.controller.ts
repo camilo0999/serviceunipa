@@ -53,17 +53,4 @@ export class TicketsController {
     );
   }
 
-  @Post('validate')
-  @HttpCode(HttpStatus.OK)
-  @Roles(RolUsuario.administrador, RolUsuario.operador_comedor)
-  @ApiOperation({ summary: 'Validar un ticket QR escaneado (Solo operadores)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Ticket válido y marcado como usado.',
-  })
-  @ApiResponse({ status: 401, description: 'Ticket inválido o expirado.' })
-  @ApiResponse({ status: 409, description: 'Ticket ya fue utilizado.' })
-  validate(@Body() validateTicketDto: ValidateTicketDto) {
-    return this.ticketsService.validateTicket(validateTicketDto.qrHash);
-  }
 }

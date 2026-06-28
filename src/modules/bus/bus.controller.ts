@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param } from '@nestjs/common';
 import { BusService } from './bus.service';
 import { CreateRutaDto } from './dto/create-ruta.dto';
 import { CreateHorarioDto } from './dto/create-horario.dto';
@@ -8,7 +8,15 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { RolUsuario } from '@prisma/client';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
+@ApiTags('Transporte')
+@ApiBearerAuth()
 @Controller('bus')
 export class BusController {
   constructor(private readonly busService: BusService) {}
@@ -41,17 +49,25 @@ export class BusController {
     return this.busService.addHorario(id, dto.horaPartida);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('tickets/generate')
+  @Roles(RolUsuario.estudiante)
+  @ApiOperation({ summary: 'Generar ticket de transporte para un viaje (Solo estudiantes)' })
+  @ApiResponse({ status: 201, description: 'Ticket de transporte generado exitosamente.' })
+  @ApiResponse({ status: 401, description: 'Autenticación requerida.' })
   generateTicket(@Request() req: { user: { sub: string } }, @Body() dto: GenerateBusTicketDto) {
     const usuarioId = req.user.sub;
     return this.busService.generateTicket(usuarioId, dto.viajeId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Post('tickets/board')
-  @Roles(RolUsuario.operador_bus, RolUsuario.administrador, RolUsuario.estudiante)
-  board(@Body() dto: ValidateBusTicketDto) {
+  @Post('tickets/validate')
+  @Roles(RolUsuario.operador_bus, RolUsuario.administrador)
+  @ApiOperation({ summary: 'Validar ticket QR de transporte (Solo operadores)' })
+  @ApiResponse({ status: 200, description: 'Ticket válido y procesado.' })
+  @ApiResponse({ status: 401, description: 'QR inválido o expirado.' })
+  @ApiResponse({ status: 409, description: 'Ticket ya fue utilizado.' })
+  validate(@Body() dto: ValidateBusTicketDto) {
     return this.busService.board(dto.qrHash);
   }
 

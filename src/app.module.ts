@@ -13,7 +13,6 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { MenusDiaModule } from './modules/menus-dia/menus-dia.module';
-import { TicketsModule } from './modules/tickets/tickets.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 import { BusModule } from './modules/bus/bus.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -56,7 +55,6 @@ import { ReportsModule } from './modules/reports/reports.module';
     TokenBlacklistModule,
     RedisModule,
     MenusDiaModule,
-    TicketsModule,
     BusModule,
     NotificacionesModule,
     // Módulo para importaciones masivas (CSV)

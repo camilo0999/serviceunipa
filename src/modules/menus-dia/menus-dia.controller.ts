@@ -7,10 +7,14 @@ import {
   Param,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { MenusDiaService } from './menus-dia.service';
 import { CreateMenuDiaDto } from './dto/create-menu-dia.dto';
 import { UpdateMenuDiaDto } from './dto/update-menu-dia.dto';
+import { GenerateTicketDto } from 'src/modules/tickets/dto/generate-ticket.dto';
+import { ValidateTicketDto } from 'src/modules/tickets/dto/validate-ticket.dto';
+import { TicketsService } from 'src/modules/tickets/tickets.service';
 import {
   ApiTags,
   ApiOperation,
@@ -27,7 +31,10 @@ import { RolUsuario } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('menus-dia')
 export class MenusDiaController {
-  constructor(private readonly menusDiaService: MenusDiaService) {}
+  constructor(
+    private readonly menusDiaService: MenusDiaService,
+    private readonly ticketsService: TicketsService,
+  ) {}
 
   @Post()
   @Roles(RolUsuario.administrador, RolUsuario.operador_comedor)
@@ -60,6 +67,30 @@ export class MenusDiaController {
   @ApiResponse({ status: 200, description: 'Menú actualizado exitosamente.' })
   update(@Param('id') id: string, @Body() updateMenuDiaDto: UpdateMenuDiaDto) {
     return this.menusDiaService.update(id, updateMenuDiaDto);
+  }
+
+  @Post('tickets/generate')
+  @Roles(RolUsuario.estudiante)
+  @ApiOperation({ summary: 'Generar un ticket QR para el menú del día (Solo estudiantes)' })
+  @ApiResponse({ status: 201, description: 'Ticket generado exitosamente.' })
+  @ApiResponse({ status: 403, description: 'Estudiante no elegible para el menú.' })
+  @ApiResponse({ status: 409, description: 'Ticket ya generado para este menú.' })
+  generateTicket(
+    @Request() req: { user: { sub: string } },
+    @Body() generateTicketDto: GenerateTicketDto,
+  ) {
+    const usuarioId = req.user.sub;
+    return this.ticketsService.generateTicket(usuarioId, generateTicketDto.menuDiaId);
+  }
+
+  @Post('tickets/validate')
+  @Roles(RolUsuario.administrador, RolUsuario.operador_comedor)
+  @ApiOperation({ summary: 'Validar un billete escaneado QR de alimentación (Solo operadores)' })
+  @ApiResponse({ status: 200, description: 'Ticket válido y marcado como usado.' })
+  @ApiResponse({ status: 401, description: 'Ticket inválido o expirado.' })
+  @ApiResponse({ status: 409, description: 'Ticket ya fue utilizado.' })
+  validateTicket(@Body() validateTicketDto: ValidateTicketDto) {
+    return this.ticketsService.validateTicket(validateTicketDto.qrHash);
   }
 
   @Delete(':id')
