@@ -163,31 +163,60 @@ export class UsuariosService {
   }
 
   private async getBusesHoy(hoy: Date, ahora: Date) {
-    const viajes = await this.prisma.viaje.findMany({
+    const rutas = await this.prisma.ruta.findMany({
       where: {
-        OR: [{ fecha: hoy }, { horarioId: { not: null } }],
+        activo: true,
+        OR: [{ horaSalida: { not: null } }, { horarios: { some: {} } }],
       },
-      include: { ruta: true, horario: true },
+      include: { horarios: true },
     });
 
-    return viajes
-      .map((viaje) => {
-        const departure = this.getViajeDeparture(viaje, hoy);
-        if (!departure) return null;
+    const busesPorRuta = await Promise.all(
+      rutas.map(async (ruta: any) => {
+        const horas = [] as Array<{ id: string | null; horaPartida: Date }>;
 
-        const disponible = viaje.capacidadTotal - viaje.ocupados;
-        if (disponible <= 0) return null;
-        if (departure.getTime() <= ahora.getTime()) return null;
+        if (ruta.horaSalida) {
+          horas.push({ id: null, horaPartida: ruta.horaSalida });
+        }
 
-        return {
-          viajeId: viaje.id,
-          rutaNombre: viaje.ruta.nombre,
-          origen: viaje.ruta.origen,
-          destino: viaje.ruta.destino,
-          departure,
-          disponible,
-        };
-      })
+        for (const horario of ruta.horarios ?? []) {
+          horas.push({ id: horario.id, horaPartida: horario.horaPartida });
+        }
+
+        const buses = await Promise.all(
+          horas.map(async (horario) => {
+            const departure = this.combineDateAndTime(hoy, horario.horaPartida);
+            if (!departure || departure.getTime() <= ahora.getTime()) return null;
+
+            const viaje = await this.prisma.viaje.findFirst({
+              where: {
+                rutaId: ruta.id,
+                fecha: hoy,
+                ...(horario.id ? { horarioId: horario.id } : { horarioId: null }),
+              },
+            });
+
+            const capacidad = viaje?.capacidadTotal ?? ruta.capacidadTotal;
+            const disponible = Math.max(0, capacidad - (viaje?.ocupados ?? 0));
+            if (disponible <= 0) return null;
+
+            return {
+              viajeId: viaje?.id ?? ruta.id,
+              rutaNombre: ruta.nombre,
+              origen: ruta.origen,
+              destino: ruta.destino,
+              departure,
+              disponible,
+            };
+          }),
+        );
+
+        return buses.filter(Boolean);
+      }),
+    );
+
+    return busesPorRuta
+      .flat()
       .filter((viaje): viaje is {
         viajeId: string;
         rutaNombre: string;

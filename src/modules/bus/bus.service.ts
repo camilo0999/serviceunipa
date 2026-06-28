@@ -50,10 +50,37 @@ export class BusService {
     return this.prisma.viaje.create({ data: { rutaId, horarioId, capacidadTotal: capacidad, fecha: fecha ? new Date(fecha) : undefined } });
   }
 
+  private async ensureViaje(viajeId: string) {
+    const viaje = await this.prisma.viaje.findUnique({ where: { id: viajeId } });
+    if (viaje) return viaje;
+
+    const ruta = await this.prisma.ruta.findUnique({ where: { id: viajeId } });
+    if (!ruta) throw new NotFoundException('Viaje no encontrado');
+
+    const hoy = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
+    const viajeExistente = await this.prisma.viaje.findFirst({
+      where: {
+        rutaId: ruta.id,
+        fecha: hoy,
+        horarioId: null,
+      },
+    });
+
+    if (viajeExistente) return viajeExistente;
+
+    return this.prisma.viaje.create({
+      data: {
+        rutaId: ruta.id,
+        horarioId: null,
+        capacidadTotal: ruta.capacidadTotal,
+        fecha: hoy,
+      },
+    });
+  }
+
   // Generar ticket QR para bus
   async generateTicket(usuarioId: string, viajeId: string, expiresInMin = 30) {
-    const viaje = await this.prisma.viaje.findUnique({ where: { id: viajeId } });
-    if (!viaje) throw new NotFoundException('Viaje no encontrado');
+    const viaje = await this.ensureViaje(viajeId);
 
     // Verificar disponibilidad básica
     if (viaje.ocupados >= viaje.capacidadTotal) {
@@ -126,8 +153,7 @@ export class BusService {
   async getAvailability(viajeId: string) {
     const cached = await this.redisService.get(`viaje:availability:${viajeId}`);
     if (cached !== null) return { disponible: Number(cached) };
-    const v = await this.prisma.viaje.findUnique({ where: { id: viajeId } });
-    if (!v) throw new NotFoundException('Viaje no encontrado');
+    const v = await this.ensureViaje(viajeId);
     const available = v.capacidadTotal - v.ocupados;
     await this.redisService.set(`viaje:availability:${viajeId}`, String(available), 60);
     return { disponible: available };
