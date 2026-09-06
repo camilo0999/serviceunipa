@@ -23,11 +23,7 @@ export class AuthService {
   }
 
   async login(user: any, ipAddress: string, userAgent: string) {
-    const payload = { email: user.email, sub: user.id, rol: user.rol };
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
-      jwtid: randomUUID(),
-    });
+    const accessToken = this.createAccessToken(user);
     const refreshToken = randomBytes(64).toString('hex');
 
     const expiraEn = new Date();
@@ -68,16 +64,35 @@ export class AuthService {
     });
 
     const user = await this.usuariosService.findOne(session.usuarioId);
-    const payload = { email: user.email, sub: user.id, rol: user.rol };
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
-      jwtid: randomUUID(),
-    });
+    const accessToken = this.createAccessToken(user);
 
     return {
       access_token: accessToken,
       refresh_token: newToken,
     };
+  }
+
+  private createAccessToken(user: {
+    id: string;
+    email: string;
+    rol: string;
+    nombre: string;
+    apellido: string;
+    fotoUrl?: string | null;
+  }) {
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      rol: user.rol,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      foto_url: user.fotoUrl ?? null,
+    };
+
+    return this.jwtService.sign(payload, {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
+      jwtid: randomUUID(),
+    });
   }
 
   async logout(userId: string, jti: string, exp: number, refreshToken: string) {
