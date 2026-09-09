@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  ParseUUIDPipe,
   Delete,
   UseGuards,
   Request,
@@ -52,6 +53,15 @@ export class MenusDiaController {
   })
   findAll() {
     return this.menusDiaService.findAll();
+  }
+
+  @Get('estado/:id')
+  @Roles(RolUsuario.administrador, RolUsuario.operador_comedor)
+  @ApiOperation({ summary: 'Activar o desactivar un menú del día' })
+  @ApiResponse({ status: 200, description: 'Estado del menú actualizado exitosamente.' })
+  @ApiResponse({ status: 404, description: 'Servicio de alimentación no encontrado.' })
+  toggleEstado(@Param('id', ParseUUIDPipe) id: string) {
+    return this.menusDiaService.toggleEstado(id);
   }
 
   @Get(':id')

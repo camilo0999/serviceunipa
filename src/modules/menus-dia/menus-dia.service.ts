@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { CreateMenuDiaDto } from './dto/create-menu-dia.dto';
 import { UpdateMenuDiaDto } from './dto/update-menu-dia.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -54,6 +55,25 @@ export class MenusDiaService {
       throw new NotFoundException(`Menú con ID ${id} no encontrado`);
     }
     return menu;
+  }
+
+  async toggleEstado(id: string) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const menu = await tx.menuDia.findUnique({ where: { id } });
+        if (!menu) {
+          throw new NotFoundException(
+            'Servicio de alimentación no encontrado',
+          );
+        }
+
+        return tx.menuDia.update({
+          where: { id },
+          data: { activo: !menu.activo },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async update(id: string, updateMenuDiaDto: UpdateMenuDiaDto) {

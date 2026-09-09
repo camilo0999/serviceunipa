@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from 'src/modules/redis/redis.service';
@@ -36,6 +37,21 @@ export class BusService {
     const r = await this.prisma.ruta.findUnique({ where: { id } });
     if (!r) throw new NotFoundException('Ruta no encontrada');
     return r;
+  }
+
+  async toggleRutaEstado(id: string) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const ruta = await tx.ruta.findUnique({ where: { id } });
+        if (!ruta) throw new NotFoundException('Ruta no encontrada');
+
+        return tx.ruta.update({
+          where: { id },
+          data: { activo: !ruta.activo },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async addHorario(rutaId: string, horaPartida: string) {

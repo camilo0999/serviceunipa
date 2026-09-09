@@ -1,4 +1,13 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { BusService } from './bus.service';
 import { CreateRutaDto } from './dto/create-ruta.dto';
 import { CreateHorarioDto } from './dto/create-horario.dto';
@@ -33,6 +42,13 @@ export class BusController {
   @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
   listRutas() {
     return this.busService.listRutas();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('rutas/estado/:id')
+  @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
+  toggleRutaEstado(@Param('id', ParseUUIDPipe) id: string) {
+    return this.busService.toggleRutaEstado(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
