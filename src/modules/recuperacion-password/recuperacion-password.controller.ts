@@ -4,6 +4,20 @@ import { RequestResetDto } from './dto/request-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { randomBytes } from 'crypto';
+
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[char] as string,
+  );
 
 @ApiTags('Recuperación de Contraseña')
 @Controller('auth/password')
@@ -39,13 +53,31 @@ export class RecuperacionPasswordController {
    */
   @Get('reset')
   getResetPage(@Res() res: Response, @Query('token') token?: string) {
+    const nonce = randomBytes(16).toString('base64');
+
+    // CSP específica de esta página: solo se permite el script inline
+    // mediante nonce. El token nunca se interpola sin escapar.
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        `script-src 'nonce-${nonce}'`,
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+      ].join('; '),
+    );
+
     const html = `<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Restablecer contraseña</title>
-    <style>
+    <style nonce="${nonce}">
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
@@ -217,7 +249,7 @@ export class RecuperacionPasswordController {
         <p class="subtitle">Ingresa tu nueva contraseña para recuperar el acceso a tu cuenta</p>
 
         <form id="resetForm" style="width:100%">
-          <input type="hidden" id="token" value="${token ? token : ''}" />
+          <input type="hidden" id="token" value="${token ? escapeHtml(token) : ''}" />
 
           <div class="input-wrapper">
             <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -246,12 +278,20 @@ export class RecuperacionPasswordController {
 
     </div>
 
-    <script>
+    <script nonce="${nonce}">
       (function(){
         const form = document.getElementById('resetForm');
         const msg = document.getElementById('message');
         const tokenInput = document.getElementById('token');
         const submitBtn = document.getElementById('submitBtn');
+
+        function showError(text){
+          msg.textContent = '';
+          const span = document.createElement('span');
+          span.className = 'error';
+          span.textContent = text;
+          msg.appendChild(span);
+        }
 
         if(!tokenInput.value){
           const params = new URLSearchParams(window.location.search);
@@ -267,15 +307,15 @@ export class RecuperacionPasswordController {
           const token = tokenInput.value;
 
           if(password.length < 6){
-            msg.innerHTML = '<span class="error">La contraseña debe tener al menos 6 caracteres.</span>';
+            showError('La contraseña debe tener al menos 6 caracteres.');
             return;
           }
           if(password !== confirm){
-            msg.innerHTML = '<span class="error">Las contraseñas no coinciden.</span>';
+            showError('Las contraseñas no coinciden.');
             return;
           }
           if(!token){
-            msg.innerHTML = '<span class="error">Token de recuperación faltante.</span>';
+            showError('Token de recuperación faltante.');
             return;
           }
 
@@ -295,12 +335,12 @@ export class RecuperacionPasswordController {
               document.getElementById('successView').classList.add('visible');
               setTimeout(() => { window.location.href = '/'; }, 2500);
             } else {
-              msg.innerHTML = '<span class="error">' + (data.message || 'Error al restablecer la contraseña') + '</span>';
+              showError(data.message || 'Error al restablecer la contraseña');
               submitBtn.disabled = false;
               submitBtn.textContent = 'Restablecer contraseña';
             }
           } catch(err){
-            msg.innerHTML = '<span class="error">Error de red al intentar restablecer la contraseña.</span>';
+            showError('Error de red al intentar restablecer la contraseña.');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Restablecer contraseña';
             console.error(err);

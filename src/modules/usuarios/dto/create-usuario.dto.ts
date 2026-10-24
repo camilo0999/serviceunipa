@@ -4,6 +4,8 @@ import {
   IsEnum,
   IsOptional,
   IsBoolean,
+  MinLength,
+  MaxLength,
 } from 'class-validator';
 import { RolUsuario, TurnoUsuario } from '@prisma/client';
 
@@ -37,15 +39,17 @@ export class CreateUsuarioDto {
   email: string;
 
   /**
-   * Hash de la contraseña o contraseña en texto plano para encriptación inicial
+   * Contraseña en texto plano. El servidor la almacena únicamente como hash.
    * @example ContrasenaSegura123
    */
   @IsString()
-  passwordHash: string;
+  @MinLength(8)
+  @MaxLength(72)
+  password: string;
 
   /**
    * Rol que desempeñará el usuario en el sistema
-   * @example ESTUDIANTE
+   * @example estudiante
    */
   @IsEnum(RolUsuario)
   @IsOptional()
@@ -53,7 +57,7 @@ export class CreateUsuarioDto {
 
   /**
    * Turno de acceso o estudio asignado al usuario
-   * @example DIURNO
+   * @example mixto
    */
   @IsEnum(TurnoUsuario)
   @IsOptional()

@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { RedisModule } from 'src/modules/redis/redis.module';
 import { NotificacionesModule } from 'src/modules/notificaciones/notificaciones.module';
+import { getJwtSecret } from 'src/auth/jwt-secret';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { NotificacionesModule } from 'src/modules/notificaciones/notificaciones.
     NotificacionesModule,
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'secret',
+        secret: getJwtSecret(),
       }),
     }),
   ],

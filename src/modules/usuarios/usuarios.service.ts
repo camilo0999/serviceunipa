@@ -2,48 +2,53 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import * as bcrypt from 'bcrypt';
+
+/** Campos seguros: nunca incluye passwordHash. */
+const USUARIO_PUBLIC_SELECT = {
+  id: true,
+  codigoEstudiantil: true,
+  nombre: true,
+  apellido: true,
+  email: true,
+  rol: true,
+  turno: true,
+  activo: true,
+  fotoUrl: true,
+  creadoEn: true,
+  actualizadoEn: true,
+} as const;
 
 @Injectable()
 export class UsuariosService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createUsuarioDto: CreateUsuarioDto) {
-    const { passwordHash, ...rest } = createUsuarioDto;
-    const hashed = await bcrypt.hash(passwordHash, 12);
+    const { password, ...rest } = createUsuarioDto;
+    const hashed = await bcrypt.hash(password, 12);
 
-    const user = await this.prisma.usuario.create({
+    return this.prisma.usuario.create({
       data: {
         ...rest,
         passwordHash: hashed,
       },
+      select: USUARIO_PUBLIC_SELECT,
     });
-    delete (user as any).passwordHash;
-    return user;
   }
 
   async findAll() {
     return this.prisma.usuario.findMany({
-      select: {
-        id: true,
-        codigoEstudiantil: true,
-        nombre: true,
-        apellido: true,
-        email: true,
-        rol: true,
-        turno: true,
-        activo: true,
-        fotoUrl: true,
-        creadoEn: true,
-        actualizadoEn: true,
-      },
+      select: USUARIO_PUBLIC_SELECT,
     });
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.usuario.findUnique({ where: { id } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: USUARIO_PUBLIC_SELECT,
+    });
     if (!user) throw new NotFoundException('User not found');
-    delete (user as any).passwordHash;
     return user;
   }
 
@@ -307,19 +312,38 @@ export class UsuariosService {
   }
 
   async update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
-    const data: any = { ...updateUsuarioDto };
-    if (data.passwordHash) {
-      data.passwordHash = await bcrypt.hash(data.passwordHash, 12);
+    const { password, ...rest } = updateUsuarioDto;
+    const data: any = { ...rest };
+    if (password) {
+      data.passwordHash = await bcrypt.hash(password, 12);
     }
-    const user = await this.prisma.usuario.update({
+    return this.prisma.usuario.update({
       where: { id },
       data,
+      select: USUARIO_PUBLIC_SELECT,
     });
-    delete (user as any).passwordHash;
-    return user;
+  }
+
+  /**
+   * Actualización de autoservicio: únicamente campos de perfil.
+   * Rol, turno, estado, correo, código y contraseña quedan fuera.
+   */
+  async updatePerfil(id: string, updatePerfilDto: UpdatePerfilDto) {
+    return this.prisma.usuario.update({
+      where: { id },
+      data: {
+        nombre: updatePerfilDto.nombre,
+        apellido: updatePerfilDto.apellido,
+        fotoUrl: updatePerfilDto.fotoUrl,
+      },
+      select: USUARIO_PUBLIC_SELECT,
+    });
   }
 
   async remove(id: string) {
-    return this.prisma.usuario.delete({ where: { id } });
+    return this.prisma.usuario.delete({
+      where: { id },
+      select: USUARIO_PUBLIC_SELECT,
+    });
   }
 }

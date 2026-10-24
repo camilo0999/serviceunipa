@@ -1,15 +1,22 @@
-import { Controller, Get, Query, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Query, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import type { Response } from 'express';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { RolUsuario } from '@prisma/client';
 
 @ApiTags('Reports')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RolUsuario.administrador)
 @Controller('reports')
 export class ReportsController {
   constructor(private reportsService: ReportsService) {}
 
   /**
-   * Exportar reportes históricos
+   * Exportar reportes históricos (solo administradores)
    * Query: report=tickets|food|transport, format=csv|pdf, start, end
    */
   @Get('export')

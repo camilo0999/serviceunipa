@@ -15,7 +15,11 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usuariosService.findByEmail(email);
-    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+    if (
+      user &&
+      user.activo &&
+      (await bcrypt.compare(pass, user.passwordHash))
+    ) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -32,7 +36,8 @@ export class AuthService {
     await this.prisma.sesion.create({
       data: {
         usuarioId: user.id,
-        refreshToken,
+        // Solo se persiste el hash; el valor en claro solo se entrega al cliente.
+        refreshToken: this.hashRefreshToken(refreshToken),
         ipAddress,
         userAgent,
         expiraEn,
@@ -46,11 +51,24 @@ export class AuthService {
   }
 
   async refresh(oldToken: string) {
-    const session = await this.prisma.sesion.findUnique({
-      where: { refreshToken: oldToken },
-    });
-    if (!session || session.revocada || session.expiraEn < new Date()) {
+    if (!oldToken || typeof oldToken !== 'string') {
       throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const session = await this.prisma.sesion.findUnique({
+      where: { refreshToken: this.hashRefreshToken(oldToken) },
+    });
+    if (
+      !session ||
+      session.revocada ||
+      session.expiraEn < new Date()
+    ) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.usuariosService.findOne(session.usuarioId);
+    if (!user.activo) {
+      throw new UnauthorizedException('La cuenta está desactivada');
     }
 
     // Rotate token
@@ -60,10 +78,12 @@ export class AuthService {
 
     await this.prisma.sesion.update({
       where: { id: session.id },
-      data: { refreshToken: newToken, expiraEn },
+      data: {
+        refreshToken: this.hashRefreshToken(newToken),
+        expiraEn,
+      },
     });
 
-    const user = await this.usuariosService.findOne(session.usuarioId);
     const accessToken = this.createAccessToken(user);
 
     return {
@@ -95,18 +115,43 @@ export class AuthService {
     });
   }
 
-  async logout(userId: string, jti: string, exp: number, refreshToken: string) {
-    await this.prisma.sesion.updateMany({
-      where: { refreshToken },
-      data: { revocada: true },
-    });
+  async logout(
+    userId: string,
+    jti: string,
+    exp: number,
+    refreshToken?: string,
+  ) {
+    // Revoca únicamente la sesión que pertenece a este usuario y cuyo
+    // refresh token fue entregado explícitamente. Nunca revoca sesiones
+    // de otros dispositivos ni de otros usuarios.
+    if (refreshToken && typeof refreshToken === 'string') {
+      await this.prisma.sesion.updateMany({
+        where: {
+          refreshToken: this.hashRefreshToken(refreshToken),
+          usuarioId: userId,
+          revocada: false,
+        },
+        data: { revocada: true },
+      });
+    }
 
-    await this.prisma.tokenBlacklist.create({
-      data: {
-        tokenJti: jti,
-        usuarioId: userId,
-        expiraEn: new Date(exp * 1000),
-      },
-    });
+    if (jti && Number.isFinite(exp)) {
+      try {
+        await this.prisma.tokenBlacklist.create({
+          data: {
+            tokenJti: jti,
+            usuarioId: userId,
+            expiraEn: new Date(exp * 1000),
+          },
+        });
+      } catch (error: any) {
+        // Un doble logout no debe producir un 500.
+        if (error?.code !== 'P2002') throw error;
+      }
+    }
+  }
+
+  private hashRefreshToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

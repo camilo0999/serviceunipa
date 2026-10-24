@@ -59,6 +59,7 @@ export class SesionesController {
    * Cierra/revoca una sesión activa específica por su ID.
    */
   @Patch(':id/revoke')
+  @Roles(RolUsuario.administrador)
   revoke(@Param('id', ParseUUIDPipe) id: string) {
     return this.sesionesService.revoke(id);
   }

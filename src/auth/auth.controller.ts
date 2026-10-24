@@ -51,7 +51,7 @@ export class AuthController {
   @Post('logout')
   async logout(
     @Req() req: Request,
-    @Body('refresh_token') refreshToken: string,
+    @Body('refresh_token') refreshToken?: string,
   ) {
     const { sub, jti, exp } = req.user as any;
     await this.authService.logout(sub, jti, exp, refreshToken);

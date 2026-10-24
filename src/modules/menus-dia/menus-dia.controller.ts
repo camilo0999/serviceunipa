@@ -46,6 +46,12 @@ export class MenusDiaController {
   }
 
   @Get()
+  @Roles(
+    RolUsuario.administrador,
+    RolUsuario.operador_comedor,
+    RolUsuario.operador_bus,
+    RolUsuario.estudiante,
+  )
   @ApiOperation({ summary: 'Listar todos los menús del día' })
   @ApiResponse({
     status: 200,
@@ -65,6 +71,12 @@ export class MenusDiaController {
   }
 
   @Get(':id')
+  @Roles(
+    RolUsuario.administrador,
+    RolUsuario.operador_comedor,
+    RolUsuario.operador_bus,
+    RolUsuario.estudiante,
+  )
   @ApiOperation({ summary: 'Obtener un menú por ID' })
   @ApiResponse({ status: 200, description: 'Menú retornado exitosamente.' })
   findOne(@Param('id') id: string) {

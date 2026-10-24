@@ -3,12 +3,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { MenusDiaController } from './menus-dia.controller';
 import { MenusDiaService } from './menus-dia.service';
 import { TicketsService } from '../tickets/tickets.service';
+import { getJwtSecret } from 'src/auth/jwt-secret';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET || 'secret',
+        secret: getJwtSecret(),
       }),
     }),
   ],
