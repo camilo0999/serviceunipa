@@ -13,6 +13,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiBearerAuth,
+  ApiOperation,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -51,6 +52,49 @@ export class ImportController {
     },
   })
   async importSchedules(@UploadedFile() file: any) {
+    this.assertValidCsvFile(file);
+
+    const records = this.importService.parseCsv(file.buffer);
+    if (records.length > MAX_RECORDS) {
+      throw new BadRequestException(
+        `El archivo supera el máximo de ${MAX_RECORDS} registros`,
+      );
+    }
+
+    return this.importService.importSchedules(records);
+  }
+
+  @Post('enrollments')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({
+    summary:
+      'Importar inscripciones masivas desde CSV (codigoEstudiantil, materiaCodigo, semestre)',
+  })
+  async importEnrollments(@UploadedFile() file: any) {
+    this.assertValidCsvFile(file);
+
+    const records = this.importService.parseEnrollmentCsv(file.buffer);
+    if (records.length > MAX_RECORDS) {
+      throw new BadRequestException(
+        `El archivo supera el máximo de ${MAX_RECORDS} registros`,
+      );
+    }
+
+    return this.importService.importEnrollments(records);
+  }
+
+  private assertValidCsvFile(file: any) {
     if (!file) throw new BadRequestException('Se requiere un archivo CSV');
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -61,14 +105,5 @@ export class ImportController {
     if (!ALLOWED_MIME_TYPES.has(file.mimetype) && !filename.endsWith('.csv')) {
       throw new BadRequestException('Solo se permiten archivos CSV');
     }
-
-    const records = this.importService.parseCsv(file.buffer);
-    if (records.length > MAX_RECORDS) {
-      throw new BadRequestException(
-        `El archivo supera el máximo de ${MAX_RECORDS} registros`,
-      );
-    }
-
-    return this.importService.importSchedules(records);
   }
 }
