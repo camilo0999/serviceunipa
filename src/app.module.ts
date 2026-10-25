@@ -19,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ImportModule } from './modules/import/import.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { MateriasModule } from './modules/materias/materias.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     ImportModule,
     MetricsModule,
     ReportsModule,
+    MateriasModule,
   ],
   providers: [
     {
