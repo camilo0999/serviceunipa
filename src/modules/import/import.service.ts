@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { RolUsuario } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as csv from 'csv-parse/sync';
 
@@ -55,22 +56,36 @@ export class ImportService {
           continue;
         }
 
+        if (usuario.rol !== RolUsuario.estudiante) {
+          results.skipped++;
+          results.errors.push({ record: r, reason: 'usuario_no_estudiante' });
+          continue;
+        }
+
         // Buscar o crear materia
         let materia: any = null;
         if (r.materiaCodigo) {
-          materia = await this.prisma.materia.findUnique({ where: { codigo: r.materiaCodigo } });
+          materia = await this.prisma.materia.findUnique({
+            where: { codigo: r.materiaCodigo },
+          });
         }
         if (!materia) {
           // intentar por nombre
-          materia = await this.prisma.materia.findFirst({ where: { nombre: r.materiaNombre } });
+          materia = await this.prisma.materia.findFirst({
+            where: { nombre: r.materiaNombre },
+          });
         }
         if (!materia) {
           materia = await this.prisma.materia.create({
             data: {
               codigo: r.materiaCodigo || `GEN-${Date.now()}`,
               nombre: r.materiaNombre,
-              horaInicio: r.hora_inicio ? new Date(`1970-01-01T${r.hora_inicio}:00Z`) : new Date('1970-01-01T00:00:00Z'),
-              horaFin: r.hora_fin ? new Date(`1970-01-01T${r.hora_fin}:00Z`) : new Date('1970-01-01T00:00:00Z'),
+              horaInicio: r.hora_inicio
+                ? new Date(`1970-01-01T${r.hora_inicio}:00Z`)
+                : new Date('1970-01-01T00:00:00Z'),
+              horaFin: r.hora_fin
+                ? new Date(`1970-01-01T${r.hora_fin}:00Z`)
+                : new Date('1970-01-01T00:00:00Z'),
               diasSemana: r.dia ? this.parseDiaToArray(r.dia) : [],
             },
           });
@@ -102,7 +117,7 @@ export class ImportService {
         results.inserted++;
       } catch (err) {
         results.skipped++;
-        results.errors.push({ record: r});
+        results.errors.push({ record: r });
       }
     }
     return results;

@@ -20,6 +20,7 @@ import { ImportModule } from './modules/import/import.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { MateriasModule } from './modules/materias/materias.module';
+import { InscripcionesModule } from './modules/inscripciones/inscripciones.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { MateriasModule } from './modules/materias/materias.module';
     MetricsModule,
     ReportsModule,
     MateriasModule,
+    InscripcionesModule,
   ],
   providers: [
     {
