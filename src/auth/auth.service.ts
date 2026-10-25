@@ -98,6 +98,8 @@ export class AuthService {
     rol: string;
     nombre: string;
     apellido: string;
+    codigoEstudiantil?: string;
+    turno?: string;
     fotoUrl?: string | null;
   }) {
     const payload = {
@@ -106,6 +108,8 @@ export class AuthService {
       rol: user.rol,
       nombre: user.nombre,
       apellido: user.apellido,
+      codigoEstudiantil: user.codigoEstudiantil ?? null,
+      turno: user.turno ?? null,
       foto_url: user.fotoUrl ?? null,
     };
 

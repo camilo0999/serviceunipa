@@ -80,7 +80,8 @@ export class UsuariosService {
       const inicio = this.combineDateAndTime(menu.fecha, menu.horaInicio);
       const fin = this.combineDateAndTime(menu.fecha, menu.horaFin);
 
-      const disponible = inscripcionesHoy.some((insc) => {
+      const vigente = fin.getTime() > ahora.getTime();
+      const hasOverlap = inscripcionesHoy.some((insc) => {
         const materiaInicio = this.combineDateAndTime(
           menu.fecha,
           insc.materia.horaInicio,
@@ -88,6 +89,14 @@ export class UsuariosService {
         const materiaFin = this.combineDateAndTime(menu.fecha, insc.materia.horaFin);
         return this.intervalsOverlap(inicio, fin, materiaInicio, materiaFin);
       });
+      const disponible = vigente && hasOverlap;
+
+      let mensaje = 'No hay clases que crucen con este horario de comida hoy.';
+      if (!vigente) {
+        mensaje = 'El horario de este menú ya finalizó.';
+      } else if (disponible) {
+        mensaje = 'Puedes acceder a este beneficio de comida hoy.';
+      }
 
       return {
         menuDiaId: menu.id,
@@ -96,9 +105,7 @@ export class UsuariosService {
         horaInicio: inicio,
         horaFin: fin,
         disponible,
-        mensaje: disponible
-          ? 'Puedes acceder a este beneficio de comida hoy.'
-          : 'No hay clases que crucen con este horario de comida hoy.',
+        mensaje,
       };
     });
 
@@ -193,7 +200,7 @@ export class UsuariosService {
             const departure = this.combineDateAndTime(hoy, horario.horaPartida);
             if (!departure || departure.getTime() <= ahora.getTime()) return null;
 
-            const viaje = await this.prisma.viaje.findFirst({
+            let viaje = await this.prisma.viaje.findFirst({
               where: {
                 rutaId: ruta.id,
                 fecha: hoy,
@@ -201,12 +208,29 @@ export class UsuariosService {
               },
             });
 
-            const capacidad = viaje?.capacidadTotal ?? ruta.capacidadTotal;
-            const disponible = Math.max(0, capacidad - (viaje?.ocupados ?? 0));
+            // Se materializa el viaje para que el cliente reciba siempre un
+            // id de Viaje real y pueda generar su ticket sin ambigüedad.
+            if (!viaje) {
+              viaje = await this.prisma.viaje.create({
+                data: {
+                  rutaId: ruta.id,
+                  horarioId: horario.id,
+                  capacidadTotal: ruta.capacidadTotal,
+                  fecha: hoy,
+                },
+              });
+            }
+
+            const disponible = Math.max(
+              0,
+              viaje.capacidadTotal - viaje.ocupados,
+            );
             if (disponible <= 0) return null;
 
             return {
-              viajeId: viaje?.id ?? ruta.id,
+              viajeId: viaje.id,
+              rutaId: ruta.id,
+              horarioId: viaje.horarioId,
               rutaNombre: ruta.nombre,
               origen: ruta.origen,
               destino: ruta.destino,
@@ -224,6 +248,8 @@ export class UsuariosService {
       .flat()
       .filter((viaje): viaje is {
         viajeId: string;
+        rutaId: string;
+        horarioId: string | null;
         rutaNombre: string;
         origen: string;
         destino: string;

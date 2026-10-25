@@ -59,6 +59,15 @@ export class BusController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('rutas/:id/viajes')
+  @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
+  @ApiOperation({ summary: 'Listar los viajes reales de hoy para una ruta' })
+  @ApiResponse({ status: 200, description: 'Viajes disponibles retornados.' })
+  listViajes(@Param('id', ParseUUIDPipe) id: string) {
+    return this.busService.listViajesByRuta(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Post('rutas/:id/horarios')
   @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
   addHorario(@Param('id') id: string, @Body() dto: CreateHorarioDto) {
