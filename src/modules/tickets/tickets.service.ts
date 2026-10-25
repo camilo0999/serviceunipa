@@ -158,6 +158,46 @@ export class TicketsService {
     };
   }
 
+  /**
+   * Devuelve el ticket del usuario para un menú, si existe.
+   * Permite al cliente recuperar un ticket ya generado en lugar de tratarlo
+   * como un error de duplicado.
+   */
+  async getTicketActivo(usuarioId: string, menuDiaId: string) {
+    const menu = await this.prisma.menuDia.findUnique({
+      where: { id: menuDiaId },
+    });
+    if (!menu) throw new NotFoundException('Menú no encontrado');
+
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { usuarioId_menuDiaId: { usuarioId, menuDiaId } },
+    });
+
+    if (!ticket) {
+      return { ticket: null };
+    }
+
+    return {
+      ticket: {
+        id: ticket.id,
+        menuDiaId: ticket.menuDiaId,
+        qrHash: ticket.qrHash,
+        estado: this.estadoTicket(ticket),
+        generadoEn: ticket.creadoEn,
+        expiraEn: ticket.expiraEn,
+        usadoEn: ticket.usadoEn,
+        tipoComida: menu.tipoComida,
+        detalle: menu.descripcion,
+      },
+    };
+  }
+
+  private estadoTicket(ticket: { usado: boolean; expiraEn: Date }) {
+    if (ticket.usado) return 'usado';
+    if (ticket.expiraEn.getTime() <= Date.now()) return 'expirado';
+    return 'pendiente';
+  }
+
   async validateTicket(qrHash: string) {
     let payload: { ticketId: string };
     try {

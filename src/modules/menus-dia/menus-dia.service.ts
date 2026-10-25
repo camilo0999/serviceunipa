@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   ConflictException,
@@ -41,10 +42,42 @@ export class MenusDiaService {
     });
   }
 
-  findAll() {
+  /**
+   * Lista los menús. Si se recibe `fecha` (YYYY-MM-DD) se filtra por ese día.
+   * La fecha se interpreta como fecha de calendario (UTC), igual que la
+   * columna `@db.Date` de Prisma.
+   */
+  async findAll(fecha?: string) {
+    const where = fecha ? { fecha: this.parseFecha(fecha) } : undefined;
+
     return this.prisma.menuDia.findMany({
+      ...(where && { where }),
       orderBy: [{ fecha: 'desc' }, { horaInicio: 'asc' }],
     });
+  }
+
+  private parseFecha(fecha: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha);
+    if (!match) {
+      throw new BadRequestException(
+        'La fecha debe tener el formato YYYY-MM-DD',
+      );
+    }
+
+    const [, year, month, day] = match;
+    const parsed = new Date(
+      Date.UTC(Number(year), Number(month) - 1, Number(day)),
+    );
+
+    // Rechaza fechas inexistentes (p. ej. 2026-02-31), que Date normaliza.
+    if (
+      Number.isNaN(parsed.getTime()) ||
+      parsed.toISOString().slice(0, 10) !== fecha
+    ) {
+      throw new BadRequestException('La fecha indicada no es válida');
+    }
+
+    return parsed;
   }
 
   async findOne(id: string) {

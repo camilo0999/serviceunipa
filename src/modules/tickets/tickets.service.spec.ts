@@ -15,7 +15,11 @@ describe('TicketsService (P1-03)', () => {
     prisma = {
       menuDia: { findUnique: jest.fn() },
       inscripcionMateria: { findMany: jest.fn() },
-      ticket: { findFirst: jest.fn(), create: jest.fn() },
+      ticket: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        findUnique: jest.fn(),
+      },
     };
     menuBase = {
       id: 'menu-1',
@@ -108,5 +112,86 @@ describe('TicketsService (P1-03)', () => {
         }),
       }),
     );
+  });
+
+  describe('getTicketActivo', () => {
+    const ticketBase = {
+      id: 'ticket-1',
+      usuarioId: 'usuario-1',
+      menuDiaId: 'menu-1',
+      qrHash: 'hash-firmado',
+      usado: false,
+      usadoEn: null,
+      creadoEn: new Date('2026-10-24T12:00:00.000Z'),
+      expiraEn: new Date('2026-10-24T12:45:00.000Z'),
+    };
+
+    it('devuelve ticket null cuando el estudiante no ha generado uno', async () => {
+      prisma.menuDia.findUnique.mockResolvedValue(menuBase);
+      prisma.ticket.findUnique.mockResolvedValue(null);
+
+      const result = await service.getTicketActivo('usuario-1', 'menu-1');
+
+      expect(result).toEqual({ ticket: null });
+      expect(prisma.ticket.findUnique).toHaveBeenCalledWith({
+        where: {
+          usuarioId_menuDiaId: {
+            usuarioId: 'usuario-1',
+            menuDiaId: 'menu-1',
+          },
+        },
+      });
+    });
+
+    it('marca como pendiente un ticket aún vigente', async () => {
+      prisma.menuDia.findUnique.mockResolvedValue(menuBase);
+      prisma.ticket.findUnique.mockResolvedValue(ticketBase);
+
+      const result = await service.getTicketActivo('usuario-1', 'menu-1');
+
+      expect(result.ticket).toEqual(
+        expect.objectContaining({
+          id: 'ticket-1',
+          qrHash: 'hash-firmado',
+          estado: 'pendiente',
+          tipoComida: 'almuerzo',
+          detalle: 'Almuerzo',
+        }),
+      );
+    });
+
+    it('marca como expirado un ticket cuya vigencia terminó', async () => {
+      prisma.menuDia.findUnique.mockResolvedValue(menuBase);
+      prisma.ticket.findUnique.mockResolvedValue({
+        ...ticketBase,
+        expiraEn: new Date('2026-10-24T12:15:00.000Z'),
+      });
+
+      const result = await service.getTicketActivo('usuario-1', 'menu-1');
+
+      expect(result.ticket?.estado).toBe('expirado');
+    });
+
+    it('marca como usado el ticket aunque su vigencia no haya terminado', async () => {
+      prisma.menuDia.findUnique.mockResolvedValue(menuBase);
+      prisma.ticket.findUnique.mockResolvedValue({
+        ...ticketBase,
+        usado: true,
+        usadoEn: new Date('2026-10-24T12:10:00.000Z'),
+      });
+
+      const result = await service.getTicketActivo('usuario-1', 'menu-1');
+
+      expect(result.ticket?.estado).toBe('usado');
+    });
+
+    it('lanza 404 cuando el menú no existe', async () => {
+      prisma.menuDia.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.getTicketActivo('usuario-1', 'menu-1'),
+      ).rejects.toThrow('Menú no encontrado');
+      expect(prisma.ticket.findUnique).not.toHaveBeenCalled();
+    });
   });
 });

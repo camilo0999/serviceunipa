@@ -9,6 +9,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { MenusDiaService } from './menus-dia.service';
 import { CreateMenuDiaDto } from './dto/create-menu-dia.dto';
@@ -57,8 +58,30 @@ export class MenusDiaController {
     status: 200,
     description: 'Lista de menús retornada exitosamente.',
   })
-  findAll() {
-    return this.menusDiaService.findAll();
+  @ApiResponse({
+    status: 400,
+    description: 'La fecha no tiene el formato YYYY-MM-DD o no es válida.',
+  })
+  findAll(@Query('fecha') fecha?: string) {
+    return this.menusDiaService.findAll(fecha);
+  }
+
+  @Get(':id/tickets/activo')
+  @Roles(RolUsuario.estudiante)
+  @ApiOperation({
+    summary: 'Obtener el ticket vigente del estudiante para un menú',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Ticket del estudiante (o null si aún no lo ha generado) con su estado.',
+  })
+  @ApiResponse({ status: 404, description: 'Menú no encontrado.' })
+  getTicketActivo(
+    @Request() req: { user: { sub: string } },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ticketsService.getTicketActivo(req.user.sub, id);
   }
 
   @Get('estado/:id')
