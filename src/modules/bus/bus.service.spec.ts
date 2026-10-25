@@ -24,10 +24,27 @@ describe('BusService (P1-01)', () => {
     horario: null,
   };
 
+  const ruta = {
+    id: 'ruta-1',
+    nombre: 'Ruta principal',
+    origen: 'Campus',
+    destino: 'Terminal',
+    fotoUrl: 'https://example.com/ruta.jpg',
+    horaSalida: new Date('1970-01-01T18:00:00Z'),
+    capacidadTotal: 40,
+    activo: true,
+  };
+
   beforeEach(() => {
     prisma = {
-      busTicket: { findFirst: jest.fn(), create: jest.fn() },
+      busTicket: { findFirst: jest.fn(), create: jest.fn(), count: jest.fn() },
       viaje: { findUnique: jest.fn() },
+      ruta: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
     };
     jwt = { sign: jest.fn().mockReturnValue('qr-firmado') };
     redis = { set: jest.fn() };
@@ -75,5 +92,75 @@ describe('BusService (P1-01)', () => {
       ConflictException,
     );
     expect(prisma.busTicket.create).not.toHaveBeenCalled();
+  });
+
+  it('solo lista rutas activas a los estudiantes', async () => {
+    prisma.ruta.findMany.mockResolvedValue([ruta]);
+
+    await service.listRutas(false);
+
+    expect(prisma.ruta.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { activo: true } }),
+    );
+  });
+
+  it('permite a administradores ver también las rutas inactivas', async () => {
+    prisma.ruta.findMany.mockResolvedValue([ruta]);
+
+    await service.listRutas(true);
+
+    expect(prisma.ruta.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: undefined }),
+    );
+  });
+
+  it('actualiza una ruta existente y convierte la hora de salida', async () => {
+    prisma.ruta.findUnique.mockResolvedValue(ruta);
+    prisma.ruta.update.mockResolvedValue({ ...ruta, nombre: 'Ruta nueva' });
+
+    const result = await service.updateRuta('ruta-1', {
+      nombre: 'Ruta nueva',
+      horaSalida: '1970-01-01T19:00:00.000Z',
+    });
+
+    expect(prisma.ruta.update).toHaveBeenCalledWith({
+      where: { id: 'ruta-1' },
+      data: expect.objectContaining({
+        nombre: 'Ruta nueva',
+        horaSalida: new Date('1970-01-01T19:00:00.000Z'),
+      }),
+    });
+    expect(result.nombre).toBe('Ruta nueva');
+  });
+
+  it('rechaza actualizar una ruta inexistente', async () => {
+    prisma.ruta.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.updateRuta('ruta-1', { nombre: 'Ruta nueva' }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.ruta.update).not.toHaveBeenCalled();
+  });
+
+  it('no elimina una ruta con tickets emitidos', async () => {
+    prisma.ruta.findUnique.mockResolvedValue(ruta);
+    prisma.busTicket.count.mockResolvedValue(2);
+
+    await expect(service.deleteRuta('ruta-1')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(prisma.ruta.delete).not.toHaveBeenCalled();
+  });
+
+  it('elimina una ruta sin tickets asociados', async () => {
+    prisma.ruta.findUnique.mockResolvedValue(ruta);
+    prisma.busTicket.count.mockResolvedValue(0);
+
+    const result = await service.deleteRuta('ruta-1');
+
+    expect(prisma.ruta.delete).toHaveBeenCalledWith({
+      where: { id: 'ruta-1' },
+    });
+    expect(result.eliminada).toBe(true);
   });
 });

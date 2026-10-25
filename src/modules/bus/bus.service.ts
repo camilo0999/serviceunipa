@@ -29,14 +29,70 @@ export class BusService {
     });
   }
 
-  async listRutas() {
-    return this.prisma.ruta.findMany({ where: { activo: true } });
+  /**
+   * Lista las rutas. Los administradores y operadores ven también las
+   * inactivas para poder reactivarlas o editarlas; los estudiantes solo ven
+   * las rutas activas.
+   */
+  async listRutas(incluirInactivas = false) {
+    return this.prisma.ruta.findMany({
+      where: incluirInactivas ? undefined : { activo: true },
+      orderBy: { creadoEn: 'desc' },
+    });
   }
 
   async getRuta(id: string) {
     const r = await this.prisma.ruta.findUnique({ where: { id } });
     if (!r) throw new NotFoundException('Ruta no encontrada');
     return r;
+  }
+
+  async updateRuta(
+    id: string,
+    data: {
+      nombre?: string;
+      origen?: string;
+      destino?: string;
+      capacidadTotal?: number;
+      fotoUrl?: string;
+      horaSalida?: string;
+    },
+  ) {
+    await this.getRuta(id);
+
+    return this.prisma.ruta.update({
+      where: { id },
+      data: {
+        ...(data.nombre !== undefined && { nombre: data.nombre }),
+        ...(data.origen !== undefined && { origen: data.origen }),
+        ...(data.destino !== undefined && { destino: data.destino }),
+        ...(data.capacidadTotal !== undefined && {
+          capacidadTotal: data.capacidadTotal,
+        }),
+        ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl || null }),
+        ...(data.horaSalida !== undefined && {
+          horaSalida: data.horaSalida ? new Date(data.horaSalida) : null,
+        }),
+      },
+    });
+  }
+
+  async deleteRuta(id: string) {
+    const ruta = await this.getRuta(id);
+
+    // Se conserva el historial: si la ruta ya tiene tickets emitidos solo se
+    // permite desactivarla, no borrar en cascada los registros de abordaje.
+    const tickets = await this.prisma.busTicket.count({
+      where: { viaje: { rutaId: id } },
+    });
+    if (tickets > 0) {
+      throw new ConflictException(
+        'La ruta tiene tickets de transporte asociados. Desactívala en lugar de eliminarla.',
+      );
+    }
+
+    await this.prisma.ruta.delete({ where: { id } });
+    return { id: ruta.id, eliminada: true };
   }
 
   async toggleRutaEstado(id: string) {

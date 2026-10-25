@@ -77,22 +77,26 @@ export class MenusDiaService {
   }
 
   async update(id: string, updateMenuDiaDto: UpdateMenuDiaDto) {
-    await this.findOne(id); // Ensure it exists
+    const current = await this.findOne(id); // 404 si no existe
 
     if (updateMenuDiaDto.fecha || updateMenuDiaDto.tipoComida) {
+      const fecha = updateMenuDiaDto.fecha
+        ? new Date(updateMenuDiaDto.fecha)
+        : current.fecha;
+      const tipoComida =
+        updateMenuDiaDto.tipoComida ?? current.tipoComida;
+
       const existingMenu = await this.prisma.menuDia.findFirst({
         where: {
           id: { not: id },
-          fecha: updateMenuDiaDto.fecha
-            ? new Date(updateMenuDiaDto.fecha)
-            : undefined,
-          tipoComida: updateMenuDiaDto.tipoComida,
+          fecha,
+          tipoComida,
         },
       });
 
       if (existingMenu) {
         throw new ConflictException(
-          `Ya existe un menú de ${updateMenuDiaDto.tipoComida || existingMenu.tipoComida} para esa fecha`,
+          `Ya existe un menú de ${tipoComida} para esa fecha`,
         );
       }
     }

@@ -5,11 +5,14 @@ import {
   UseGuards,
   Request,
   Get,
+  Patch,
+  Delete,
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { BusService } from './bus.service';
 import { CreateRutaDto } from './dto/create-ruta.dto';
+import { UpdateRutaDto } from './dto/update-ruta.dto';
 import { CreateHorarioDto } from './dto/create-horario.dto';
 import { GenerateBusTicketDto } from './dto/generate-bus-ticket.dto';
 import { ValidateBusTicketDto } from './dto/validate-bus-ticket.dto';
@@ -40,8 +43,28 @@ export class BusController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('rutas')
   @Roles(RolUsuario.estudiante, RolUsuario.administrador, RolUsuario.operador_bus)
-  listRutas() {
-    return this.busService.listRutas();
+  listRutas(@Request() req: { user: { rol: RolUsuario | string } }) {
+    const incluirInactivas =
+      req.user?.rol === RolUsuario.administrador ||
+      req.user?.rol === RolUsuario.operador_bus;
+    return this.busService.listRutas(incluirInactivas);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch('rutas/:id')
+  @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
+  updateRuta(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateRutaDto,
+  ) {
+    return this.busService.updateRuta(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Delete('rutas/:id')
+  @Roles(RolUsuario.administrador, RolUsuario.operador_bus)
+  deleteRuta(@Param('id', ParseUUIDPipe) id: string) {
+    return this.busService.deleteRuta(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -28,13 +33,18 @@ export class UsuariosService {
     const { password, ...rest } = createUsuarioDto;
     const hashed = await bcrypt.hash(password, 12);
 
-    return this.prisma.usuario.create({
-      data: {
-        ...rest,
-        passwordHash: hashed,
-      },
-      select: USUARIO_PUBLIC_SELECT,
-    });
+    try {
+      return await this.prisma.usuario.create({
+        data: {
+          ...rest,
+          passwordHash: hashed,
+        },
+        select: USUARIO_PUBLIC_SELECT,
+      });
+    } catch (error) {
+      this.handleUniqueError(error);
+      throw error;
+    }
   }
 
   async findAll() {
@@ -338,16 +348,24 @@ export class UsuariosService {
   }
 
   async update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
+    await this.findOne(id); // 404 si no existe
+
     const { password, ...rest } = updateUsuarioDto;
-    const data: any = { ...rest };
+    const data: Prisma.UsuarioUpdateInput = { ...rest };
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 12);
     }
-    return this.prisma.usuario.update({
-      where: { id },
-      data,
-      select: USUARIO_PUBLIC_SELECT,
-    });
+
+    try {
+      return await this.prisma.usuario.update({
+        where: { id },
+        data,
+        select: USUARIO_PUBLIC_SELECT,
+      });
+    } catch (error) {
+      this.handleUniqueError(error);
+      throw error;
+    }
   }
 
   /**
@@ -367,9 +385,22 @@ export class UsuariosService {
   }
 
   async remove(id: string) {
+    await this.findOne(id); // 404 si no existe
+
     return this.prisma.usuario.delete({
       where: { id },
       select: USUARIO_PUBLIC_SELECT,
     });
+  }
+
+  private handleUniqueError(error: unknown) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new ConflictException(
+        'Ya existe un usuario con ese correo o código estudiantil.',
+      );
+    }
   }
 }
